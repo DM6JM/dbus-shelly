@@ -22,7 +22,7 @@ sys.path.insert(1, os.path.join(os.path.dirname(__file__), 'ext', 'aiovelib'))
 from aiovelib.service import Service
 
 # local modules
-from meter import Meter
+from meter import PhysicalMeter
 
 wslogger = logging.getLogger('websockets.server')
 wslogger.setLevel(logging.INFO)
@@ -92,7 +92,7 @@ def main():
 
 	mainloop = asyncio.get_event_loop()
 	mainloop.run_until_complete(
-		websockets.serve(Server(lambda: Meter(bus_type)), '', 8000))
+		websockets.serve(Server(lambda: PhysicalMeter(bus_type)), '', 8000))
 
 	try:
 		logger.info("Starting main loop")
