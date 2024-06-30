@@ -127,7 +127,7 @@ class SingleMeter(object):
 				settings.get_value(settings.alias("position")),
 				writeable=True, onchange=self.position_changed))
 
-		prefix = "Ac/L" + str(self.phaseposition) 
+		prefix = "/Ac/L" + str(self.phaseposition) 
 
 		# Meter paths
 		self.service.add_item(DoubleItem('/Ac/Energy/Forward', None, text=unit_kwh))
