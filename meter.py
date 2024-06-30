@@ -29,13 +29,13 @@ alias_position = lambda v: "position_" + str(v)
 alias_phase = lambda v: "phase_" + str(v)
 
 class SingleMeter(object):
-	def __init__(self, bus_type, id):
+	def __init__(self, bus_type, meterid):
 		self.bus_type = bus_type
 		self.monitor = None
 		self.service = None
 		self.position = None
 		self.destroyed = False
-		self.id = id
+		self.meterid = meterid
 		self.phaseposition = 1 # Which phase the EM is connected to
 
 	async def wait_for_settings(self):
@@ -64,7 +64,7 @@ class SingleMeter(object):
 			return False
 
 		try:
-			name = data['result']['name'] + "_" + str(self.id)
+			name = data['result']['name'] + "_" + str(self.meterid)
 		except:
 			name = None	
 
@@ -84,7 +84,7 @@ class SingleMeter(object):
 
 		logger.info("Connected to localsettings")
 
-		settingprefix = '/Settings/Devices/shelly_' + mac + "_" + str(self.id)		
+		settingprefix = '/Settings/Devices/shelly_' + mac + "_" + str(self.meterid)		
 		
 		await settings.add_settings(
 				Setting(settingprefix + "/ClassAndVrmInstance", "grid:40", 0, 0, alias="instance"),
@@ -98,7 +98,7 @@ class SingleMeter(object):
 		self.phaseposition = settings.get_value(settings.alias("phaseposition"))
 
 		# Set up the service
-		self.service = await Service.create(bus, "com.victronenergy.{}.shelly_{}_{}".format(role, mac, str(id)))
+		self.service = await Service.create(bus, "com.victronenergy.{}.shelly_{}_{}".format(role, mac, str(meterid)))
 
 		self.service.add_item(TextItem('/Mgmt/ProcessName', MAIN_FILE))
 		self.service.add_item(TextItem('/Mgmt/ProcessVersion', VERSION))
