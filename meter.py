@@ -98,7 +98,10 @@ class SingleMeter(object):
 		self.phaseposition = settings.get_value(settings.alias("phaseposition"))
 
 		# Set up the service
-		self.service = await Service.create(bus, "com.victronenergy.{}.shelly_{}_{}".format(role, mac, str(meterid)))
+		logger.info("Creating service to: " +    "com.victronenergy.{}.shelly_{}_{}".format(role, mac, self.meterid))
+		self.service = await Service.create(bus, "com.victronenergy.{}.shelly_{}_{}".format(role, mac, self.meterid))
+
+		logger.info("Adding items for: " + "Shelly_{}_{}".format(role, mac, self.meterid))
 
 		self.service.add_item(TextItem('/Mgmt/ProcessName', MAIN_FILE))
 		self.service.add_item(TextItem('/Mgmt/ProcessVersion', VERSION))
@@ -139,6 +142,8 @@ class SingleMeter(object):
 		self.service.add_item(DoubleItem(prefix + '/Power', None, text=unit_watt))
 		self.service.add_item(DoubleItem(prefix + '/Energy/Forward', None, text=unit_kwh))
 		self.service.add_item(DoubleItem(prefix + '/Energy/Reverse', None, text=unit_kwh))
+
+		logger.info("Done setting up individual meter: " + "Shelly_{}_{}".format(mac, self.meterid))
 
 		return True
 
@@ -494,30 +499,45 @@ class PhysicalMeter(object):
 		except:
 			name = None	
 
+		logger.info("New Physical meter connected, type: " + app)
+
 		# Check model and usage
 		if model == 'SPEM-002CEBEU50' and app == 'ProEM':
+			logger.info("Creating individual meters for ProEM")
 			for meter in range(2):
+				logger.info("Creating meter no: " + str(meter))
 				self.localmeters[meter] = m = SingleMeter(self.bus_type, meter)
 				self.localmeterskeys[meter] = {"em1:"+str(meter), "em1data:"+str(meter)}
 				if not await m.start(host, port, data):
+					logger.info("Adding meter failed for no: "+ str(meter))
 					return False # Something failed on startup
+				else:
+					logger.info("Creating meter done for no: " + str(meter))
+			return True
 		elif model == 'SPEM-003CEBEU' and app == 'Pro3EM':
+			logger.info("Checking profile of Pro3EM")
 			try:
 				profile = data['result']['profile']
 			except KeyError:
 				return False
 			if profile == 'monophase':
+				logger.info("Profile is individual, creating meters")
 				for meter in range(3):
+					logger.info("Creating meter no: " + str(meter))
 					self.localmeters[meter] = m = SingleMeter(self.bus_type, meter)
 					self.localmeterskeys[meter] = {"em1:"+str(meter), "em1data:"+str(meter)}
 					if not await m.start(host, port, data):
 						return False # Something failed on startup
+				return True
 			else:
+				logger.info("Profile is 3-phase, creating meter")
 				self.localmeters[0] = m = ThreePhaseMeter(self.bus_type)
 				self.localmeterskeys[0] = {"em:0", "emdata:0"}
 				if not await m.start(host, port, data):
 					return False # Something failed on startup
+				return True
 		else:
+			logger.info("Adding failed because unknown shelly meter type")
 			return False # Unsupported model connected
 
 		# # Connect to dbus, localsettings
@@ -655,15 +675,15 @@ class PhysicalMeter(object):
 	def destroy(self):
 		if self.localmeters is not None:
 			for meter in self.localmeters:
-				if not meter.destroyed:
-					meter.destroy()
+				if not self.localmeters[meter].destroyed:
+					self.localmeters[meter].destroy()
 		self.destroyed = True
 	
 	async def update(self, data):
 
 		# Check if meters maybe killed themselves to enforce restart
 		for meter in self.localmeters:
-			if meter.destroyed:
+			if self.localmeters[meter].destroyed:
 				self.destroy()	#We kill ourselfs if one of the submeters needs a restart
 
 		# NotifyStatus has power, current, voltage and energy values		
